@@ -27,8 +27,8 @@ logging.basicConfig(format=LOG_FORMAT, level=getattr(logging, 'INFO'))
 def prepare_iters():
 
     use_output_eos = False
-    src = SourceField()
-    tgt = TargetField(include_eos=use_output_eos)
+    src = SourceField(batch_first=True)
+    tgt = TargetField(batch_first=True, include_eos=use_output_eos)
     tabular_data_fields = [('src', src), ('tgt', tgt)]
 
     max_len = 50
@@ -57,28 +57,29 @@ def prepare_iters():
     return src, tgt, train, dev, monitor_data
 
 
-def initialize_model(opt, src, tgt, train):
+def initialize_model(src, tgt, train):
     # build vocabulary
-    src.build_vocab(train.dataset, max_size=opt.src_vocab)
-    tgt.build_vocab(train.dataset, max_size=opt.tgt_vocab)
+    src.build_vocab(train.dataset, max_size=1000)
+    tgt.build_vocab(train.dataset, max_size=1000)
     input_vocab = src.vocab
     output_vocab = tgt.vocab
 
     # Initialize model
-    hidden_size = opt.hidden_size
-    decoder_hidden_size = hidden_size * 2 if opt.bidirectional else hidden_size
-    encoder = EncoderRNN(len(src.vocab), opt.max_len, hidden_size, opt.embedding_size,
-                         dropout_p=opt.dropout_p_encoder,
+    hidden_size = 50
+    embedding_size = 50
+    max_len = 100
+    decoder_hidden_size = hidden_size
+    encoder = EncoderRNN(len(src.vocab), max_len, hidden_size, embedding_size,
                          n_layers=1,
-                         rnn_cell=opt.rnn_cell,
+                         rnn_cell='lstm',
                          variable_lengths=True)
-    decoder = DecoderRNN(len(tgt.vocab), opt.max_len, decoder_hidden_size,
-                         dropout_p=opt.dropout_p_decoder,
+    decoder = DecoderRNN(len(tgt.vocab), max_len, decoder_hidden_size,
                          n_layers=1,
-                         attention_method=opt.attention_method,
-                         full_focus=opt.full_focus,
-                         rnn_cell=opt.rnn_cell,
-                         eos_id=tgt.eos_id, sos_id=tgt.sos_id)
+                         attention_method='mlp',
+                         full_focus=True,
+                         rnn_cell='lstm',
+                         eos_id=tgt.eos_id,
+                         sos_id=tgt.sos_id)
     seq2seq = Seq2seq(encoder, decoder)
     seq2seq.to(device)
 
@@ -96,32 +97,25 @@ def prepare_losses_and_metrics(pad, eos):
     metrics = []
     metrics.append(WordAccuracy(ignore_index=pad))
     metrics.append(SequenceAccuracy(ignore_index=pad))
-    metrics.append(FinalTargetAccuracy(ignore_index=pad, eos_id=eos))
     return losses, loss_weights, metrics
 
 
 if __name__ == "__main__":
-    # src, tgt, train, dev, monitor_data = prepare_iters()
+    src, tgt, train, dev, monitor_data = prepare_iters()
 
-    # # Prepare model
-    # seq2seq, input_vocab, output_vocab = initialize_model(opt, src, tgt, train)
+    # Prepare model
+    seq2seq, input_vocab, output_vocab = initialize_model(src, tgt, train)
 
-    # pad = output_vocab.stoi[tgt.pad_token]
-    # eos = tgt.eos_id
-    # sos = tgt.SYM_EOS
-    # unk = tgt.unk_token
+    pad = output_vocab.stoi[tgt.pad_token]
+    eos = tgt.eos_id
+    sos = tgt.SYM_EOS
+    unk = tgt.unk_token
 
-    # # Prepare training
-    # losses, loss_weights, metrics = prepare_losses_and_metrics(pad, eos)
-    # trainer = SupervisedTrainer(expt_dir=opt.output_dir)
+    # Prepare training
+    losses, loss_weights, metrics = prepare_losses_and_metrics(pad, eos)
+    trainer = SupervisedTrainer(expt_dir='pcfg-attention/runs')
 
-    # # Train
-    # seq2seq, _ = trainer.train(seq2seq, train,
-    #                            num_epochs=opt.epochs, dev_data=dev, monitor_data=monitor_data,
-    #                            losses=losses, metrics=metrics, loss_weights=loss_weights)
-
-    train = get_standard_iter(torchtext.data.TabularDataset(
-        path='.data/pcfg_set/10K/random_split', format='src',
-        fields=tabular_data_fields,
-        filter_pred=len_filter
-    ), batch_size=128)
+    # Train
+    seq2seq, _ = trainer.train(seq2seq, train,
+                               num_epochs=5, dev_data=dev, monitor_data=monitor_data,
+                               losses=losses, metrics=metrics, loss_weights=loss_weights)
