@@ -31,7 +31,7 @@ def init_argparser():
 
     # Model arguments
     parser.add_argument('--epochs', type=int,
-                        help='Number of epochs', default=6)
+                        help='Number of epochs', default=10)
     parser.add_argument('--optim', type=str, help='Choose optimizer',
                         choices=['adam', 'adadelta', 'adagrad', 'adamax', 'rmsprop', 'sgd'])
     parser.add_argument('--max_len', type=int,
@@ -82,6 +82,8 @@ def init_argparser():
     parser.add_argument('--log-level', default='info', help='Logging level.')
     parser.add_argument('--mini', action='store_true',
                         help="Flag for using mini dataset")
+    parser.add_argument('--write_logs', action='store_true',
+                        help="Flag for wri logs after training")
     return parser
 
 
@@ -206,15 +208,25 @@ def train_pcfg_model():
     losses, loss_weights, metrics = prepare_losses_and_metrics(pad, eos)
     run_folder = 'pcfg-attention/runs/' + opt.file_name
     trainer = SupervisedTrainer(expt_dir=run_folder+'/models')
+    checkpoint_path = os.path.join(
+        run_folder+'/models', opt.load_checkpoint) if opt.resume_training else None
 
     # custom callback to log to tensorboard
     custom_cb = [TensorboardCallback(run_folder)]
 
     # Train
-    seq2seq, _ = trainer.train(seq2seq, train,
-                               num_epochs=50, dev_data=dev, monitor_data=monitor_data,
-                               losses=losses, metrics=metrics, loss_weights=loss_weights,
-                               custom_callbacks=custom_cb)
+    seq2seq, logs = trainer.train(seq2seq, train,
+                                  num_epochs=opt.epochs, dev_data=dev,
+                                  monitor_data=monitor_data, optimizer=opt.optim,
+                                  teacher_forcing_ratio=opt.teacher_forcing_ratio,
+                                  learning_rate=opt.lr,
+                                  resume_training=opt.resume_training,
+                                  checkpoint_path=checkpoint_path,
+                                  losses=losses, metrics=metrics, loss_weights=loss_weights,
+                                  checkpoint_every=opt.save_every, print_every=opt.print_every)
+
+    if opt.write_logs:
+        logs.write_to_file(run_folder+'/logs')
 
 
 if __name__ == "__main__":
