@@ -21,17 +21,17 @@ if __name__ == "__main__":
     from machine.dataset import SourceField, TargetField
 
     # train
-    combine_src_tgt_files('pcfg-attention/.data/pcfg_set/100K/random_split/train.src',
-                          'pcfg-attention/.data/pcfg_set/100K/random_split/train.tgt',
-                          'pcfg-attention/.data/pcfg_set/100K/train.tsv')
+    combine_src_tgt_files('pcfg-attention/data/pcfg_set/100K/random_split/train.src',
+                          'pcfg-attention/data/pcfg_set/100K/random_split/train.tgt',
+                          'pcfg-attention/data/pcfg_set/100K/train.tsv')
     # dev
-    combine_src_tgt_files('pcfg-attention/.data/pcfg_set/100K/random_split/dev.src',
-                          'pcfg-attention/.data/pcfg_set/100K/random_split/dev.tgt',
-                          'pcfg-attention/.data/pcfg_set/100K/dev.tsv')
+    combine_src_tgt_files('pcfg-attention/data/pcfg_set/100K/random_split/dev.src',
+                          'pcfg-attention/data/pcfg_set/100K/random_split/dev.tgt',
+                          'pcfg-attention/data/pcfg_set/100K/dev.tsv')
     # test
-    combine_src_tgt_files('pcfg-attention/.data/pcfg_set/100K/random_split/test.src',
-                          'pcfg-attention/.data/pcfg_set/100K/random_split/test.tgt',
-                          'pcfg-attention/.data/pcfg_set/100K/test.tsv')
+    combine_src_tgt_files('pcfg-attention/data/pcfg_set/100K/random_split/test.src',
+                          'pcfg-attention/data/pcfg_set/100K/random_split/test.tgt',
+                          'pcfg-attention/data/pcfg_set/100K/test.tsv')
 
     use_output_eos = False
     src = SourceField(batch_first=True)
@@ -44,6 +44,6 @@ if __name__ == "__main__":
         return len(example.src) <= max_len and len(example.tgt) <= max_len
 
     train = torchtext.data.TabularDataset(
-        path='pcfg-attention/.data/pcfg_set/10K/train.tsv', format='tsv',
+        path='pcfg-attention/data/pcfg_set/10K/train.tsv', format='tsv',
         fields=tabular_data_fields,
         filter_pred=len_filter)

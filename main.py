@@ -14,6 +14,8 @@ from machine.dataset import SourceField, TargetField
 from machine.util.checkpoint import Checkpoint
 from machine.dataset.get_standard_iter import get_standard_iter
 
+from utils import generate_filename_from_options, TensorboardCallback
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # CONSTANTS
@@ -24,62 +26,145 @@ LOG_FORMAT = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
 logging.basicConfig(format=LOG_FORMAT, level=getattr(logging, 'INFO'))
 
 
-def prepare_iters():
+def init_argparser():
+    parser = argparse.ArgumentParser()
 
-    use_output_eos = False
+    # Model arguments
+    parser.add_argument('--epochs', type=int,
+                        help='Number of epochs', default=6)
+    parser.add_argument('--optim', type=str, help='Choose optimizer',
+                        choices=['adam', 'adadelta', 'adagrad', 'adamax', 'rmsprop', 'sgd'])
+    parser.add_argument('--max_len', type=int,
+                        help='Maximum sequence length', default=50)
+    parser.add_argument(
+        '--rnn_cell', help="Chose type of rnn cell", default='lstm')
+    parser.add_argument('--bidirectional', action='store_true',
+                        help="Flag for bidirectional encoder")
+    parser.add_argument('--embedding_size', type=int,
+                        help='Embedding size', default=128)
+    parser.add_argument('--hidden_size', type=int,
+                        help='Hidden layer size', default=128)
+    parser.add_argument('--n_layers', type=int,
+                        help='Number of RNN layers in both encoder and decoder', default=1)
+    parser.add_argument('--src_vocab', type=int,
+                        help='source vocabulary size', default=600)
+    parser.add_argument('--tgt_vocab', type=int,
+                        help='target vocabulary size', default=600)
+    parser.add_argument('--dropout_p_encoder', type=float,
+                        help='Dropout probability for the encoder', default=0.2)
+    parser.add_argument('--dropout_p_decoder', type=float,
+                        help='Dropout probability for the decoder', default=0.2)
+    parser.add_argument('--teacher_forcing_ratio', type=float,
+                        help='Teacher forcing ratio', default=0.2)
+    parser.add_argument(
+        '--attention', choices=['pre-rnn', 'post-rnn'], default=False)
+    parser.add_argument('--attention_method',
+                        choices=['dot', 'mlp', 'concat'], default=None)
+    parser.add_argument('--full_focus', action='store_true')
+    parser.add_argument('--batch_size', type=int,
+                        help='Batch size', default=32)
+    parser.add_argument('--eval_batch_size', type=int,
+                        help='Batch size', default=128)
+    parser.add_argument(
+        '--lr', type=float, help='Learning rate, recommended settings.\nrecommended settings: adam=0.001 adadelta=1.0 adamax=0.002 rmsprop=0.01 sgd=0.1', default=0.001)
+    parser.add_argument('--use_output_eos', action='store_true',
+                        help='Use end of sequence token during training and evaluation')
+
+    # Data management
+    parser.add_argument('--load_checkpoint',
+                        help='The name of the checkpoint to load, usually an encoded time string')
+    parser.add_argument('--save_every', type=int,
+                        help='Every how many batches the model should be saved', default=100)
+    parser.add_argument('--print_every', type=int,
+                        help='Every how many batches to print results', default=100)
+    parser.add_argument('--resume-training', action='store_true',
+                        help='Indicates if training has to be resumed from the latest checkpoint')
+    parser.add_argument('--log-level', default='info', help='Logging level.')
+    parser.add_argument('--mini', action='store_true',
+                        help="Flag for using mini dataset")
+    # parser.add_argument(
+    #     '--write-logs', help='Specify file to write logs to after training')
+    return parser
+
+
+def validate_options(parser, opt):
+    if opt.resume_training and not opt.load_checkpoint:
+        parser.error(
+            'load_checkpoint argument is required to resume training from checkpoint')
+
+    if not opt.attention and opt.attention_method:
+        parser.error(
+            "Attention method provided, but attention is not turned on")
+
+    if opt.attention and not opt.attention_method:
+        logging.info("No Attention method provided. Using DOT method.")
+        opt.attention_method = 'dot'
+
+    return opt
+
+
+def prepare_iters(opt):
+
     src = SourceField(batch_first=True)
-    tgt = TargetField(batch_first=True, include_eos=use_output_eos)
+    tgt = TargetField(batch_first=True, include_eos=opt.use_output_eos)
     tabular_data_fields = [('src', src), ('tgt', tgt)]
 
-    max_len = 50
+    max_len = opt.max_len
 
     def len_filter(example):
         return len(example.src) <= max_len and len(example.tgt) <= max_len
 
+    ds = '100K'
+    if opt.mini:
+        ds = '10K'
+
     # generate training and testing data
     train = get_standard_iter(torchtext.data.TabularDataset(
-        path='pcfg-attention/.data/pcfg_set/10K/train.tsv', format='tsv',
+        path='pcfg-attention/data/pcfg_set/{}/train.tsv'.format(ds), format='tsv',
         fields=tabular_data_fields,
-        filter_pred=len_filter), batch_size=128)
+        filter_pred=len_filter), batch_size=opt.batch_size)
 
     dev = get_standard_iter(torchtext.data.TabularDataset(
-        path='pcfg-attention/.data/pcfg_set/10K/dev.tsv', format='tsv',
+        path='pcfg-attention/data/pcfg_set/{}/dev.tsv'.format(ds), format='tsv',
         fields=tabular_data_fields,
-        filter_pred=len_filter), batch_size=128)
+        filter_pred=len_filter), batch_size=opt.eval_batch_size)
 
     monitor_data = OrderedDict()
     m = get_standard_iter(torchtext.data.TabularDataset(
-        path='pcfg-attention/.data/pcfg_set/10K/test.tsv', format='tsv',
+        path='pcfg-attention/data/pcfg_set/{}/test.tsv'.format(ds), format='tsv',
         fields=tabular_data_fields,
-        filter_pred=len_filter), batch_size=128)
+        filter_pred=len_filter), batch_size=opt.eval_batch_size)
     monitor_data['test'] = m
 
     return src, tgt, train, dev, monitor_data
 
 
-def initialize_model(src, tgt, train):
+def initialize_model(opt, src, tgt, train):
     # build vocabulary
-    src.build_vocab(train.dataset, max_size=1000)
-    tgt.build_vocab(train.dataset, max_size=1000)
+    src.build_vocab(train.dataset, max_size=opt.src_vocab)
+    tgt.build_vocab(train.dataset, max_size=opt.tgt_vocab)
     input_vocab = src.vocab
     output_vocab = tgt.vocab
 
     # Initialize model
-    hidden_size = 50
-    embedding_size = 50
-    max_len = 100
-    decoder_hidden_size = hidden_size
-    encoder = EncoderRNN(len(src.vocab), max_len, hidden_size, embedding_size,
-                         n_layers=1,
-                         rnn_cell='lstm',
+    hidden_size = opt.hidden_size
+    decoder_hidden_size = hidden_size * 2 if opt.bidirectional else hidden_size
+    encoder = EncoderRNN(len(src.vocab), opt.max_len, hidden_size, opt.embedding_size,
+                         dropout_p=opt.dropout_p_encoder,
+                         n_layers=opt.n_layers,
+                         bidirectional=opt.bidirectional,
+                         rnn_cell=opt.rnn_cell,
                          variable_lengths=True)
-    decoder = DecoderRNN(len(tgt.vocab), max_len, decoder_hidden_size,
-                         n_layers=1,
-                         attention_method='mlp',
-                         full_focus=True,
-                         rnn_cell='lstm',
-                         eos_id=tgt.eos_id,
-                         sos_id=tgt.sos_id)
+    decoder = DecoderRNN(len(tgt.vocab), opt.max_len, decoder_hidden_size,
+                         dropout_p=opt.dropout_p_decoder,
+                         n_layers=opt.n_layers,
+                         use_attention=opt.attention,
+                         attention_method=opt.attention_method,
+                         full_focus=opt.full_focus,
+                         bidirectional=opt.bidirectional,
+                         rnn_cell=opt.rnn_cell,
+                         eos_id=tgt.eos_id, sos_id=tgt.sos_id)
+
     seq2seq = Seq2seq(encoder, decoder)
     seq2seq.to(device)
 
@@ -100,11 +185,19 @@ def prepare_losses_and_metrics(pad, eos):
     return losses, loss_weights, metrics
 
 
-if __name__ == "__main__":
-    src, tgt, train, dev, monitor_data = prepare_iters()
+def train_pcfg_model():
+
+    # Create command line argument parser and validate chosen options
+    parser = init_argparser()
+    opt = parser.parse_args()
+    opt = validate_options(parser, opt)
+    opt.file_name = generate_filename_from_options(opt)
+
+    # Prepare data
+    src, tgt, train, dev, monitor_data = prepare_iters(opt)
 
     # Prepare model
-    seq2seq, input_vocab, output_vocab = initialize_model(src, tgt, train)
+    seq2seq, input_vocab, output_vocab = initialize_model(opt, src, tgt, train)
 
     pad = output_vocab.stoi[tgt.pad_token]
     eos = tgt.eos_id
@@ -113,9 +206,15 @@ if __name__ == "__main__":
 
     # Prepare training
     losses, loss_weights, metrics = prepare_losses_and_metrics(pad, eos)
-    trainer = SupervisedTrainer(expt_dir='pcfg-attention/runs')
+    trainer = SupervisedTrainer(expt_dir='pcfg-attention/runs/')
 
+    custom_cb = TensorboardCallback('pcfg-attention/runs/')
     # Train
     seq2seq, _ = trainer.train(seq2seq, train,
-                               num_epochs=5, dev_data=dev, monitor_data=monitor_data,
-                               losses=losses, metrics=metrics, loss_weights=loss_weights)
+                               num_epochs=50, dev_data=dev, monitor_data=monitor_data,
+                               losses=losses, metrics=metrics, loss_weights=loss_weights,
+                               custom_callbacks=custom_cb)
+
+
+if __name__ == "__main__":
+    train_pcfg_model()
