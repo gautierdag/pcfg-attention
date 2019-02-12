@@ -82,8 +82,6 @@ def init_argparser():
     parser.add_argument('--log-level', default='info', help='Logging level.')
     parser.add_argument('--mini', action='store_true',
                         help="Flag for using mini dataset")
-    # parser.add_argument(
-    #     '--write-logs', help='Specify file to write logs to after training')
     return parser
 
 
@@ -134,7 +132,7 @@ def prepare_iters(opt):
         path='pcfg-attention/data/pcfg_set/{}/test.tsv'.format(ds), format='tsv',
         fields=tabular_data_fields,
         filter_pred=len_filter), batch_size=opt.eval_batch_size)
-    monitor_data['test'] = m
+    monitor_data['Test'] = m
 
     return src, tgt, train, dev, monitor_data
 
@@ -206,9 +204,12 @@ def train_pcfg_model():
 
     # Prepare training
     losses, loss_weights, metrics = prepare_losses_and_metrics(pad, eos)
-    trainer = SupervisedTrainer(expt_dir='pcfg-attention/runs/')
+    run_folder = 'pcfg-attention/runs/' + opt.file_name
+    trainer = SupervisedTrainer(expt_dir=run_folder+'/models')
 
-    custom_cb = TensorboardCallback('pcfg-attention/runs/')
+    # custom callback to log to tensorboard
+    custom_cb = [TensorboardCallback(run_folder)]
+
     # Train
     seq2seq, _ = trainer.train(seq2seq, train,
                                num_epochs=50, dev_data=dev, monitor_data=monitor_data,
