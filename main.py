@@ -31,7 +31,7 @@ def init_argparser():
 
     # Model arguments
     parser.add_argument('--epochs', type=int,
-                        help='Number of epochs', default=10)
+                        help='Number of epochs (default, 10)', default=10)
     parser.add_argument('--optim', type=str, help='Choose optimizer',
                         choices=['adam', 'adadelta', 'adagrad', 'adamax', 'rmsprop', 'sgd'])
     parser.add_argument('--max_len', type=int,
@@ -120,18 +120,18 @@ def prepare_iters(opt):
 
     # generate training and testing data
     train = get_standard_iter(torchtext.data.TabularDataset(
-        path='pcfg-attention/data/pcfg_set/{}/train.tsv'.format(ds), format='tsv',
+        path='data/pcfg_set/{}/train.tsv'.format(ds), format='tsv',
         fields=tabular_data_fields,
         filter_pred=len_filter), batch_size=opt.batch_size)
 
     dev = get_standard_iter(torchtext.data.TabularDataset(
-        path='pcfg-attention/data/pcfg_set/{}/dev.tsv'.format(ds), format='tsv',
+        path='data/pcfg_set/{}/dev.tsv'.format(ds), format='tsv',
         fields=tabular_data_fields,
         filter_pred=len_filter), batch_size=opt.eval_batch_size)
 
     monitor_data = OrderedDict()
     m = get_standard_iter(torchtext.data.TabularDataset(
-        path='pcfg-attention/data/pcfg_set/{}/test.tsv'.format(ds), format='tsv',
+        path='data/pcfg_set/{}/test.tsv'.format(ds), format='tsv',
         fields=tabular_data_fields,
         filter_pred=len_filter), batch_size=opt.eval_batch_size)
     monitor_data['Test'] = m
@@ -206,7 +206,7 @@ def train_pcfg_model():
 
     # Prepare training
     losses, loss_weights, metrics = prepare_losses_and_metrics(pad, eos)
-    run_folder = 'pcfg-attention/runs/' + opt.file_name
+    run_folder = 'runs/' + opt.file_name
     trainer = SupervisedTrainer(expt_dir=run_folder+'/models')
     checkpoint_path = os.path.join(
         run_folder+'/models', opt.load_checkpoint) if opt.resume_training else None
