@@ -14,7 +14,7 @@ from machine.dataset import SourceField, TargetField
 from machine.util.checkpoint import Checkpoint
 from machine.dataset.get_standard_iter import get_standard_iter
 
-from utils import generate_filename_from_options, TensorboardCallback
+from utils import generate_filename_from_options, TensorboardCallback, EarlyStoppingCallback
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -211,8 +211,9 @@ def train_pcfg_model():
     checkpoint_path = os.path.join(
         run_folder+'/models', opt.load_checkpoint) if opt.resume_training else None
 
-    # custom callback to log to tensorboard
-    custom_cb = [TensorboardCallback(run_folder)]
+    # custom callbacks to log to tensorboard and do early stopping
+    custom_cbs = [TensorboardCallback(
+        run_folder), EarlyStoppingCallback(patience=20)]
 
     # Train
     seq2seq, logs = trainer.train(seq2seq, train,
@@ -224,7 +225,7 @@ def train_pcfg_model():
                                   checkpoint_path=checkpoint_path,
                                   losses=losses, metrics=metrics, loss_weights=loss_weights,
                                   checkpoint_every=opt.save_every, print_every=opt.print_every,
-                                  custom_callbacks=custom_cb)
+                                  custom_callbacks=custom_cbs)
 
     if opt.write_logs:
         logs.write_to_file(run_folder+'/logs')
