@@ -223,7 +223,8 @@ def train_pcfg_model():
                                   resume_training=opt.resume_training,
                                   checkpoint_path=checkpoint_path,
                                   losses=losses, metrics=metrics, loss_weights=loss_weights,
-                                  checkpoint_every=opt.save_every, print_every=opt.print_every)
+                                  checkpoint_every=opt.save_every, print_every=opt.print_every,
+                                  custom_callbacks=custom_cb)
 
     if opt.write_logs:
         logs.write_to_file(run_folder+'/logs')

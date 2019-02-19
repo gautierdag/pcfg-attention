@@ -22,7 +22,7 @@ class TensorboardCallback(Callback):
         self.info['train_losses'] and self.info['train_metrics'] should be available to use here.
         self.info['eval_losses'] and self.info['eval_metrics'] should be available to use here.
         """
-        for l in info['train_metrics']:
+        for l in info['train_losses']:
             trainl_epoch = ('Train '+l.name+' at Epoch').replace(' ', '_')
             self.writer.add_scalar(trainl_epoch, l.get_loss(), info['epoch'])
         for m in info['train_metrics']:
@@ -36,9 +36,6 @@ class TensorboardCallback(Callback):
             evalm_epoch = ('Valid '+m.name+' at Epoch').replace(' ', '_')
             self.writer.add_scalar(evalm_epoch, m.get_val(), info['epoch'])
 
-    def on_batch_begin(self, batch, info=None):
-        pass
-
     def on_batch_end(self, batch, info=None):
         """
         Function called at the end of every batch
@@ -49,7 +46,7 @@ class TensorboardCallback(Callback):
             Then self.info['eval_losses'] and self.info['eval_metrics']
             should be available to use here.
         """
-        # Track Training Loss and metrics
+        # Track Validation Loss and metrics
         if info['checkpoint']:
             for l in info['eval_losses']:
                 evall_step = ('Valid '+l.name+' at Step').replace(' ', '_')
@@ -85,6 +82,3 @@ class TensorboardCallback(Callback):
         for m in info['eval_metrics']:
             evalm_step = ('Valid '+m.name+' at Step').replace(' ', '_')
             self.writer.add_scalar(evalm_step, m.get_val(), info['step'])
-
-    def on_train_end(self, info=None):
-        pass
