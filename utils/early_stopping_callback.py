@@ -3,12 +3,13 @@ from machine.util.callbacks import Callback
 
 class EarlyStoppingCallback(Callback):
     """
-    Taken from https://github.com/ncullen93/torchsample
+    Original callback taken from https://github.com/ncullen93/torchsample
     Early Stopping to terminate training early under certain conditions
     """
 
     def __init__(self,
-                 monitor='eval_loss',
+                 monitor='eval_losses',
+                 lm_name=None,
                  min_delta=0,
                  patience=5):
         """
@@ -17,8 +18,11 @@ class EarlyStoppingCallback(Callback):
         number of epochs
         Arguments
         ---------
-        monitor : string in {'eval_loss', 'train_losses'}
+        monitor : string in {'eval_losses', 'train_losses'}
             whether to monitor train or val loss
+        lm_name: loss or metric name eg. 'Avg NLLoss' (default None)
+                 If not specified then the first element
+                 in the monitor array is used
         min_delta : float
             minimum change in monitored value to qualify as improvement.
             This number should be positive.
@@ -26,7 +30,10 @@ class EarlyStoppingCallback(Callback):
             number of epochs to wait for improvment before terminating.
             the counter be reset after each improvment
         """
+
         self.monitor = monitor
+        self.lm_name = lm_name
+
         self.min_delta = min_delta
         self.patience = patience
         self.wait = 0
@@ -40,25 +47,23 @@ class EarlyStoppingCallback(Callback):
     def on_epoch_end(self, info=None):
         """
         Function called at the end of every epoch
-        @TODO: allow specifing what eval or train loss to use, or even the use of metrics
-        to stop training early
+        This allows specifing what eval or train loss to use
         """
 
-        if self.monitor == 'eval_loss':
-            current_loss = info['eval_losses'][0].get_loss()
-        elif self.monitor == 'train_losses':
-            current_loss = info['train_losses'][0].get_loss()
-        else:
-            raise NotImplementedError(
-                'Monitor not implemented for Early stopping')
+        # if specific loss/metric name is specified
+        if self.lm_name is not None:
+            for m in info[self.monitor]:
+                if m.name == self.lm_name:
+                    current_loss = info[self.monitor][0].get_loss()
+                    break
+        else:  # just use the first metric/loss in the array
+            current_loss = info[self.monitor][0].get_loss()
 
-        if current_loss is None:
-            pass
+        # compare current loss to previous best
+        if (current_loss - self.best_loss) < -self.min_delta:
+            self.best_loss = current_loss
+            self.wait = 1
         else:
-            if (current_loss - self.best_loss) < -self.min_delta:
-                self.best_loss = current_loss
-                self.wait = 1
-            else:
-                if self.wait >= self.patience:
-                    self.trainer._stop_training = True
-                self.wait += 1
+            if self.wait >= self.patience:
+                self.trainer._stop_training = True
+            self.wait += 1
