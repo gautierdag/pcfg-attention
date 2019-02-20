@@ -213,7 +213,8 @@ def train_pcfg_model():
 
     # custom callbacks to log to tensorboard and do early stopping
     custom_cbs = [TensorboardCallback(
-        run_folder), EarlyStoppingCallback(patience=50)]
+        run_folder), EarlyStoppingCallback(patience=20, monitor='eval_metrics',
+                                           lm_name='Word Accuracy', minimize=False)]
 
     # Train
     seq2seq, logs = trainer.train(seq2seq, train,
