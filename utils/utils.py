@@ -13,6 +13,10 @@ def generate_filename_from_options(opt):
     if opt.use_output_eos:
         fs += '_use_eos'
     if opt.attention:
+        if opt == 'pre-rnn':
+            fs += '_pre'
+        if opt == 'post-rnn':
+            fs += '_post'
         fs += '_att_{}'.format(opt.attention_method)
         if opt.full_focus:
             fs += '_ff'
