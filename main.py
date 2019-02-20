@@ -33,7 +33,9 @@ def init_argparser():
     parser.add_argument('--epochs', type=int,
                         help='Number of epochs (default, 10)', default=10)
     parser.add_argument('--optim', type=str, help='Choose optimizer',
-                        choices=['adam', 'adadelta', 'adagrad', 'adamax', 'rmsprop', 'sgd'])
+                        choices=['adam', 'adadelta', 'adagrad',
+                                 'adamax', 'rmsprop', 'sgd'],
+                        default='sgd')
     parser.add_argument('--max_len', type=int,
                         help='Maximum sequence length', default=50)
     parser.add_argument(
@@ -55,18 +57,26 @@ def init_argparser():
     parser.add_argument('--dropout_p_decoder', type=float,
                         help='Dropout probability for the decoder', default=0.2)
     parser.add_argument('--teacher_forcing_ratio', type=float,
-                        help='Teacher forcing ratio', default=0.2)
+                        help='Teacher forcing ratio', default=0.0)
+
+    # Attention arguments
     parser.add_argument(
         '--attention', choices=['pre-rnn', 'post-rnn'], default=False)
     parser.add_argument('--attention_method',
                         choices=['dot', 'mlp', 'concat'], default=None)
+    parser.add_argument('--positional_attention_method',
+                        choices=['dot', 'mlp', 'concat'], default=None)
+    parser.add_argument('--positional_attention',
+                        choices=['dot', 'mlp', 'concat'], default=None)
+
     parser.add_argument('--full_focus', action='store_true')
+
     parser.add_argument('--batch_size', type=int,
                         help='Batch size', default=32)
     parser.add_argument('--eval_batch_size', type=int,
                         help='Batch size', default=128)
     parser.add_argument(
-        '--lr', type=float, help='Learning rate, recommended settings.\nrecommended settings: adam=0.001 adadelta=1.0 adamax=0.002 rmsprop=0.01 sgd=0.1', default=0.001)
+        '--lr', type=float, help='Learning rate, recommended settings.\nrecommended settings: adam=0.001 adadelta=1.0 adamax=0.002 rmsprop=0.01 sgd=0.1', default=0.01)
     parser.add_argument('--use_output_eos', action='store_true',
                         help='Use end of sequence token during training and evaluation')
 
@@ -83,7 +93,7 @@ def init_argparser():
     parser.add_argument('--mini', action='store_true',
                         help="Flag for using mini dataset")
     parser.add_argument('--write_logs', action='store_true',
-                        help="Flag for wri logs after training")
+                        help="Flag for writing logs after training")
     parser.add_argument('--seed', type=int, default=123, metavar='S',
                         help='random seed (default: 123)')
     return parser
@@ -220,7 +230,7 @@ def train_pcfg_model():
     # custom callbacks to log to tensorboard and do early stopping
     custom_cbs = [TensorboardCallback(
         run_folder), EarlyStoppingCallback(patience=20, monitor='eval_metrics',
-                                           lm_name='Word Accuracy', minimize=False)]
+                                           lm_name='Sequence Accuracy', minimize=False)]
 
     # Train
     seq2seq, logs = trainer.train(seq2seq, train,
