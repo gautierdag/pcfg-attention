@@ -84,6 +84,8 @@ def init_argparser():
                         help="Flag for using mini dataset")
     parser.add_argument('--write_logs', action='store_true',
                         help="Flag for wri logs after training")
+    parser.add_argument('--seed', type=int, default=123, metavar='S',
+                        help='random seed (default: 123)')
     return parser
 
 
@@ -192,6 +194,10 @@ def train_pcfg_model():
     opt = parser.parse_args()
     opt = validate_options(parser, opt)
     opt.file_name = generate_filename_from_options(opt)
+
+    # Seed
+    torch.manual_seed(opt.seed)
+    torch.cuda.manual_seed_all(opt.seed)
 
     # Prepare data
     src, tgt, train, dev, monitor_data = prepare_iters(opt)
