@@ -17,20 +17,20 @@ class EarlyStoppingCallback(Callback):
         EarlyStopping callback to exit the training loop if training or
         validation loss does not improve by a certain amount for a certain
         number of epochs
-        Arguments
-        ---------
-        monitor : string in {'eval_losses', 'eval_metrics', 'train_losses', 'train_metrics'}
-            whether to monitor train or val loss
-        lm_name: loss or metric name eg. 'Avg NLLoss' (default None)
-                 If not specified then the first element
-                 in the monitor array is used
-        min_delta : float
-            minimum change in monitored value to qualify as improvement.
-            This number should be positive.
-        patience : integer
-            number of epochs to wait for improvment before terminating.
-            the counter be reset after each improvment
-        minimize: minimize quantity, if false then early stopping will maximize
+        Args:
+            monitor : string in {'eval_losses', 'eval_metrics', 'train_losses', 'train_metrics'}
+                whether to monitor train or val loss
+            lm_name: loss or metric name eg. 'Avg NLLoss' or 'Word Accuracy'
+                    If not specified then the first element
+                    in the monitor array is used
+                    (default None)
+            min_delta : float
+                minimum change in monitored value to qualify as improvement.
+                This number should be positive.
+            patience : integer
+                number of epochs to wait for improvment before terminating.
+                the counter be reset after each improvment
+            minimize: minimize quantity, if false then early stopping will maximize
         """
         if 'loss' in monitor:
             self.loss = True
@@ -64,7 +64,7 @@ class EarlyStoppingCallback(Callback):
         This allows specifing what eval or train loss to use
         """
 
-        # if specific loss/metric name is specified
+        # If specific loss/metric name is specified
         if self.lm_name is not None:
             for lm in info[self.monitor]:
                 if lm.name == self.lm_name:
@@ -73,7 +73,7 @@ class EarlyStoppingCallback(Callback):
         else:  # just use the first metric/loss in the array
             current_loss = self.get_loss_metric(info[self.monitor][0])
 
-        # compare current loss to previous best
+        # Compare current loss to previous best
         if self.minimize:
             update_best = (current_loss - self.best_lm) < -self.min_delta
         else:

@@ -15,42 +15,41 @@ class ReduceLRonPlateauCallback(Callback):
                  cooldown=0, min_lr=0, eps=1e-08):
         """
 
-        Arguments
-        ---------
-        monitor (str) - Picked from {'eval_losses', 'train_losses'}
-        mode (str) – One of min, max. In min mode, lr will be reduced when the
-                     quantity monitored has stopped decreasing; in max mode
-                     it will be reduced when the quantity
-                     monitored has stopped increasing. Default: ‘min’.
-        factor (float) – Factor by which the learning rate will be reduced.
-                         new_lr = lr * factor. Default: 0.1.
-        patience (int) – Number of epochs with no improvement after which
-                         learning rate will be reduced. For example,
-                         if patience = 2, then we will ignore the first 2 epochs
-                         with no improvement, and will only decrease the LR
-                         after the 3rd epoch if the loss still hasn’t improved
-                         then. Default: 10.
-        verbose (bool) – If True, prints a message to stdout for each update.
-                         Default: False.
-        threshold (float) – Threshold for measuring the new optimum,
-                            to only focus on significant changes.
-                            Default: 1e-4.
-        threshold_mode (str) – One of rel, abs. In rel mode,
-                               dynamic_threshold = best * ( 1 + threshold ) in ‘max’ mode
-                               or best * ( 1 - threshold ) in min mode.
-                               In abs mode, dynamic_threshold = best + threshold in max mode
-                               or best - threshold in min mode.
-                               Default: ‘rel’.
-        cooldown (int) – Number of epochs to wait before resuming normal
-                         operation after lr has been reduced.
-                         Default: 0.
-        min_lr (float or list) – A scalar or a list of scalars.
-                                 A lower bound on the learning rate of
-                                 all param groups or each group respectively.
-                                 Default: 0.
-        eps (float) – Minimal decay applied to lr. If the difference between
-                      new and old lr is smaller than eps,
-                      the update is ignored. Default: 1e-8.
+        Args:
+            monitor (str): Picked from {'eval_losses', 'train_losses'}
+            mode (str): One of min, max. In min mode, lr will be reduced when the
+                        quantity monitored has stopped decreasing; in max mode
+                        it will be reduced when the quantity
+                        monitored has stopped increasing. Default: ‘min’.
+            factor (float): Factor by which the learning rate will be reduced.
+                            new_lr = lr * factor. Default: 0.1.
+            patience (int): Number of epochs with no improvement after which
+                            learning rate will be reduced. For example,
+                            if patience = 2, then we will ignore the first 2 epochs
+                            with no improvement, and will only decrease the LR
+                            after the 3rd epoch if the loss still hasn’t improved
+                            then. Default: 10.
+            verbose (bool): If True, prints a message to stdout for each update.
+                            Default: False.
+            threshold (float): Threshold for measuring the new optimum,
+                                to only focus on significant changes.
+                                Default: 1e-4.
+            threshold_mode (str): One of rel, abs. In rel mode,
+                                dynamic_threshold = best * ( 1 + threshold ) in ‘max’ mode
+                                or best * ( 1 - threshold ) in min mode.
+                                In abs mode, dynamic_threshold = best + threshold in max mode
+                                or best - threshold in min mode.
+                                Default: ‘rel’.
+            cooldown (int): Number of epochs to wait before resuming normal
+                            operation after lr has been reduced.
+                            Default: 0.
+            min_lr (float or list): A scalar or a list of scalars.
+                                    A lower bound on the learning rate of
+                                    all param groups or each group respectively.
+                                    Default: 0.
+            eps (float): Minimal decay applied to lr. If the difference between
+                        new and old lr is smaller than eps,
+                        the update is ignored. Default: 1e-8.
         """
         self.monitor = monitor
         self.mode = mode

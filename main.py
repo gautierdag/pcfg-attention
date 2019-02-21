@@ -223,9 +223,10 @@ def train_pcfg_model():
     # Prepare training
     losses, loss_weights, metrics = prepare_losses_and_metrics(pad, eos)
     run_folder = 'runs/' + opt.file_name
-    trainer = SupervisedTrainer(expt_dir=run_folder+'/models')
-    checkpoint_path = os.path.join(
-        run_folder+'/models', opt.load_checkpoint) if opt.resume_training else None
+    model_folder = 'models/'+opt.file_name
+    trainer = SupervisedTrainer(expt_dir=model_folder)
+    checkpoint_path = os.path.join(model_folder, opt.load_checkpoint
+                                   ) if opt.resume_training else None
 
     # custom callbacks to log to tensorboard and do early stopping
     custom_cbs = [TensorboardCallback(
