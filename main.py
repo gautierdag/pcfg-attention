@@ -37,7 +37,7 @@ def init_argparser():
                                  'adamax', 'rmsprop', 'sgd'],
                         default='sgd')
     parser.add_argument('--max_len', type=int,
-                        help='Maximum sequence length', default=50)
+                        help='Maximum sequence length', default=100)
     parser.add_argument(
         '--rnn_cell', help="Chose type of rnn cell", default='lstm')
     parser.add_argument('--bidirectional', action='store_true',
