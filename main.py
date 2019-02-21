@@ -43,40 +43,38 @@ def init_argparser():
     parser.add_argument('--bidirectional', action='store_true',
                         help="Flag for bidirectional encoder")
     parser.add_argument('--embedding_size', type=int,
-                        help='Embedding size', default=128)
+                        help='Embedding size', default=512)
     parser.add_argument('--hidden_size', type=int,
-                        help='Hidden layer size', default=128)
+                        help='Hidden layer size', default=500)
     parser.add_argument('--n_layers', type=int,
-                        help='Number of RNN layers in both encoder and decoder', default=1)
+                        help='Number of RNN layers in both encoder and decoder', default=2)
     parser.add_argument('--src_vocab', type=int,
                         help='source vocabulary size', default=600)
     parser.add_argument('--tgt_vocab', type=int,
                         help='target vocabulary size', default=600)
     parser.add_argument('--dropout_p_encoder', type=float,
-                        help='Dropout probability for the encoder', default=0.2)
+                        help='Dropout probability for the encoder', default=0.1)
     parser.add_argument('--dropout_p_decoder', type=float,
-                        help='Dropout probability for the decoder', default=0.2)
+                        help='Dropout probability for the decoder', default=0.1)
     parser.add_argument('--teacher_forcing_ratio', type=float,
-                        help='Teacher forcing ratio', default=0.0)
+                        help='Teacher forcing ratio (default, 0)', default=0.0)
 
     # Attention arguments
     parser.add_argument(
         '--attention', choices=['pre-rnn', 'post-rnn'], default=False)
     parser.add_argument('--attention_method',
                         choices=['dot', 'mlp', 'concat'], default=None)
-    parser.add_argument('--positional_attention_method',
-                        choices=['dot', 'mlp', 'concat'], default=None)
-    parser.add_argument('--positional_attention',
-                        choices=['dot', 'mlp', 'concat'], default=None)
+    parser.add_argument('--positional_attention', action='store_true',
+                        help="Use positional attention")
 
     parser.add_argument('--full_focus', action='store_true')
 
     parser.add_argument('--batch_size', type=int,
-                        help='Batch size', default=32)
+                        help='Batch size', default=64)
     parser.add_argument('--eval_batch_size', type=int,
                         help='Batch size', default=128)
     parser.add_argument(
-        '--lr', type=float, help='Learning rate, recommended settings.\nrecommended settings: adam=0.001 adadelta=1.0 adamax=0.002 rmsprop=0.01 sgd=0.1', default=0.01)
+        '--lr', type=float, help='Learning rate, recommended settings.\nrecommended settings: adam=0.001 adadelta=1.0 adamax=0.002 rmsprop=0.01 sgd=0.1', default=0.1)
     parser.add_argument('--use_output_eos', action='store_true',
                         help='Use end of sequence token during training and evaluation')
 
@@ -84,9 +82,9 @@ def init_argparser():
     parser.add_argument('--load_checkpoint',
                         help='The name of the checkpoint to load, usually an encoded time string')
     parser.add_argument('--save_every', type=int,
-                        help='Every how many batches the model should be saved', default=100)
+                        help='Every how many batches the model should be saved', default=1000)
     parser.add_argument('--print_every', type=int,
-                        help='Every how many batches to print results', default=100)
+                        help='Every how many batches to print results', default=1000)
     parser.add_argument('--resume-training', action='store_true',
                         help='Indicates if training has to be resumed from the latest checkpoint')
     parser.add_argument('--log-level', default='info', help='Logging level.')

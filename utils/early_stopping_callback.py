@@ -15,8 +15,8 @@ class EarlyStoppingCallback(Callback):
                  minimize=True):
         """
         EarlyStopping callback to exit the training loop if training or
-        validation loss does not improve by a certain amount for a certain
-        number of epochs
+        validation loss or metric does not improve by a certain amount
+        for a certain number of epochs
         Args:
             monitor : string in {'eval_losses', 'eval_metrics', 'train_losses', 'train_metrics'}
                 whether to monitor train or val loss
