@@ -43,7 +43,7 @@ class EarlyStoppingCallback(Callback):
 
         self.monitor = monitor
         self.lm_name = lm_name
-        self.minimize = True
+        self.minimize = minimize
 
         self.min_delta = min_delta
         self.patience = patience
@@ -55,6 +55,8 @@ class EarlyStoppingCallback(Callback):
         self.wait = 0
         if self.minimize:
             self.best_lm = 1e15
+        else:
+            self.best_lm = -1e15
 
     def on_epoch_end(self, info=None):
         """
