@@ -75,8 +75,6 @@ def init_argparser():
                         help='Batch size', default=128)
     parser.add_argument(
         '--lr', type=float, help='Learning rate, recommended settings.\nrecommended settings: adam=0.001 adadelta=1.0 adamax=0.002 rmsprop=0.01 sgd=0.1', default=0.1)
-    parser.add_argument('--use_output_eos', action='store_true',
-                        help='Use end of sequence token during training and evaluation')
 
     # Data management
     parser.add_argument('--load_checkpoint',
@@ -116,7 +114,7 @@ def validate_options(parser, opt):
 def prepare_iters(opt):
 
     src = SourceField(batch_first=True)
-    tgt = TargetField(batch_first=True, include_eos=opt.use_output_eos)
+    tgt = TargetField(batch_first=True, include_eos=True)
     tabular_data_fields = [('src', src), ('tgt', tgt)]
 
     max_len = opt.max_len
