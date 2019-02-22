@@ -2,11 +2,11 @@ def generate_filename_from_options(opt):
     """
     Pass in options obtained from argparse and generates a filename for the run and models
     """
-    fs = '{}_emb_{}_hid_{}_de_{}_dd_{}_n_lyrs_{}_lr_{}_maxlen_{}_teach_{}'.format(
+    fs = '{}_emb_{}_hid_{}_de_{}_dd_{}_n_lyrs_{}_lr_{}_maxlen_{}'.format(
         opt.rnn_cell,
         opt.embedding_size, opt.hidden_size,
         opt.dropout_p_encoder, opt.dropout_p_decoder,
-        opt.n_layers, opt.lr, opt.max_len, opt.teacher_forcing_ratio)
+        opt.n_layers, opt.lr, opt.max_len)
 
     if opt.optim is not None:
         fs += '_{}'.format(opt.optim)
