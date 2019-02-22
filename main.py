@@ -37,15 +37,15 @@ def init_argparser():
                                  'adamax', 'rmsprop', 'sgd'],
                         default='sgd')
     parser.add_argument('--max_len', type=int,
-                        help='Maximum sequence length', default=100)
+                        help='Maximum sequence length', default=50)
     parser.add_argument(
         '--rnn_cell', help="Chose type of rnn cell", default='lstm')
     parser.add_argument('--bidirectional', action='store_true',
                         help="Flag for bidirectional encoder")
     parser.add_argument('--embedding_size', type=int,
-                        help='Embedding size', default=512)
+                        help='Embedding size', default=256)
     parser.add_argument('--hidden_size', type=int,
-                        help='Hidden layer size', default=500)
+                        help='Hidden layer size', default=256)
     parser.add_argument('--n_layers', type=int,
                         help='Number of RNN layers in both encoder and decoder', default=2)
     parser.add_argument('--src_vocab', type=int,
@@ -56,14 +56,12 @@ def init_argparser():
                         help='Dropout probability for the encoder', default=0.1)
     parser.add_argument('--dropout_p_decoder', type=float,
                         help='Dropout probability for the decoder', default=0.1)
-    parser.add_argument('--teacher_forcing_ratio', type=float,
-                        help='Teacher forcing ratio (default, 0)', default=0.0)
 
     # Attention arguments
     parser.add_argument(
-        '--attention', choices=['pre-rnn', 'post-rnn'], default=False)
+        '--attention', choices=['pre-rnn', 'post-rnn'], default='post-rnn')
     parser.add_argument('--attention_method',
-                        choices=['dot', 'mlp', 'concat'], default=None)
+                        choices=['dot', 'mlp', 'concat'], default='dot')
     parser.add_argument('--positional_attention', action='store_true',
                         help="Use positional attention")
 
@@ -74,7 +72,7 @@ def init_argparser():
     parser.add_argument('--eval_batch_size', type=int,
                         help='Batch size', default=128)
     parser.add_argument(
-        '--lr', type=float, help='Learning rate, recommended settings.\nrecommended settings: adam=0.001 adadelta=1.0 adamax=0.002 rmsprop=0.01 sgd=0.1', default=0.1)
+        '--lr', type=float, help='Learning rate, recommended settings.\nrecommended settings: adam=0.001 adadelta=1.0 adamax=0.002 rmsprop=0.01 sgd=0.1', default=1.0)
 
     # Data management
     parser.add_argument('--load_checkpoint',
@@ -238,7 +236,6 @@ def train_pcfg_model():
     seq2seq, logs = trainer.train(seq2seq, train,
                                   num_epochs=opt.epochs, dev_data=dev,
                                   monitor_data=monitor_data, optimizer=opt.optim,
-                                  teacher_forcing_ratio=opt.teacher_forcing_ratio,
                                   learning_rate=opt.lr,
                                   resume_training=opt.resume_training,
                                   checkpoint_path=checkpoint_path,
