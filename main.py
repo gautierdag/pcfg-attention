@@ -174,6 +174,10 @@ def initialize_model(opt, src, tgt, train):
                          eos_id=tgt.eos_id, sos_id=tgt.sos_id)
 
     seq2seq = Seq2seq(encoder, decoder)
+
+    for p in seq2seq.parameters():
+        p.data.uniform_(-0.1, 0.1)
+
     seq2seq.to(device)
 
     return seq2seq, input_vocab, output_vocab

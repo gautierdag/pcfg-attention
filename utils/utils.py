@@ -10,8 +10,6 @@ def generate_filename_from_options(opt):
 
     if opt.optim is not None:
         fs += '_{}'.format(opt.optim)
-    if opt.use_output_eos:
-        fs += '_use_eos'
     if opt.attention:
         if opt.attention == 'pre-rnn':
             fs += '_pre'
