@@ -25,8 +25,6 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 #         self.activation = nn.ReLU()
 #         self.out = nn.Linear(dim, 1)
 
-#     def forward(self, decoder_states, encoder_states):
-
 
 class PositionalAttention(nn.Module):
     def __init__(self,

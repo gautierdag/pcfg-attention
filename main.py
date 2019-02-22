@@ -56,6 +56,8 @@ def init_argparser():
                         help='Dropout probability for the encoder', default=0.1)
     parser.add_argument('--dropout_p_decoder', type=float,
                         help='Dropout probability for the decoder', default=0.1)
+    parser.add_argument('--param_init', type=float,
+                        help='Initialize parameters uniformly from (param_init, -param_init)', default=0.1)
 
     # Attention arguments
     parser.add_argument(
@@ -173,8 +175,9 @@ def initialize_model(opt, src, tgt, train):
 
     seq2seq = Seq2seq(encoder, decoder)
 
-    for p in seq2seq.parameters():
-        p.data.uniform_(-0.1, 0.1)
+    if opt.param_init > 0.0:
+        for p in seq2seq.parameters():
+            p.data.uniform_(-opt.param_init, opt.param_init)
 
     seq2seq.to(device)
 
