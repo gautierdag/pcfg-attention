@@ -1,6 +1,7 @@
 import os
 import argparse
 import logging
+import datetime
 
 import torch
 import torch.nn as nn
@@ -14,8 +15,8 @@ from machine.metrics import WordAccuracy, SequenceAccuracy, FinalTargetAccuracy
 from machine.dataset import SourceField, TargetField
 from machine.util.checkpoint import Checkpoint
 from machine.dataset.get_standard_iter import get_standard_iter
-
-from utils import generate_filename_from_options, TensorboardCallback, EarlyStoppingCallback, ReduceLRonPlateauCallback
+from utils import generate_filename_from_options, TensorboardCallback, \
+    EarlyStoppingCallback, ReduceLRonPlateauCallback
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -30,13 +31,22 @@ logging.basicConfig(format=LOG_FORMAT, level=getattr(logging, 'INFO'))
 def init_argparser():
     parser = argparse.ArgumentParser()
 
-    # Model arguments
+    # Optimizer settings
     parser.add_argument('--epochs', type=int,
-                        help='Number of epochs (default, 10)', default=100)
+                        help='Number of epochs (default, 100)', default=100)
     parser.add_argument('--optim', type=str, help='Choose optimizer',
                         choices=['adam', 'adadelta', 'adagrad',
                                  'adamax', 'rmsprop', 'sgd'],
                         default='sgd')
+    parser.add_argument('--param_init_glorot', action='store_true',
+                        help="Initialize weights using Glorot/Xavier initialization")
+    parser.add_argument('--param_init', type=float,
+                        help='Initialize parameters uniformly from (param_init, -param_init)', default=0.1)
+    parser.add_argument(
+        '--lr', type=float, help='Learning rate, recommended settings.\nrecommended \
+        settings: adam=0.001 adadelta=1.0 adamax=0.002 rmsprop=0.01 sgd=1.0', default=1.0)
+
+    # Model arguments
     parser.add_argument('--max_len', type=int,
                         help='Maximum sequence length', default=50)
     parser.add_argument(
@@ -57,8 +67,6 @@ def init_argparser():
                         help='Dropout probability for the encoder', default=0.1)
     parser.add_argument('--dropout_p_decoder', type=float,
                         help='Dropout probability for the decoder', default=0.1)
-    parser.add_argument('--param_init', type=float,
-                        help='Initialize parameters uniformly from (param_init, -param_init)', default=0.1)
 
     # Attention arguments
     parser.add_argument(
@@ -68,14 +76,11 @@ def init_argparser():
     parser.add_argument('--positional_attention', action='store_true',
                         help="Use positional attention")
 
-    parser.add_argument('--full_focus', action='store_true')
-
+    # Data arguments
     parser.add_argument('--batch_size', type=int,
                         help='Batch size', default=64)
     parser.add_argument('--eval_batch_size', type=int,
                         help='Batch size', default=128)
-    parser.add_argument(
-        '--lr', type=float, help='Learning rate, recommended settings.\nrecommended settings: adam=0.001 adadelta=1.0 adamax=0.002 rmsprop=0.01 sgd=1.0', default=1.0)
 
     # Data management
     parser.add_argument('--load_checkpoint',
@@ -169,46 +174,22 @@ def initialize_model(opt, src, tgt, train):
                          n_layers=opt.n_layers,
                          use_attention=opt.attention,
                          attention_method=opt.attention_method,
-                         full_focus=opt.full_focus,
+                         full_focus=True,
                          bidirectional=opt.bidirectional,
                          rnn_cell=opt.rnn_cell,
                          eos_id=tgt.eos_id, sos_id=tgt.sos_id)
 
-
-
-    
-    # def weights_init(m):
-    #     if isinstance(m, nn.LSTM):
-    #         for name, param in m.named_parameters():
-    #             if 'bias' in name:
-    #                 nn.init.constant_(param, 0.0)
-    #             elif 'weight' in name:
-    #                 # nn.init.uniform_(param, -opt.param_init, opt.param_init)
-    #                 nn.init.xavier_uniform_(param)
-
-    #     if isinstance(m, nn.Linear) or isinstance(m, nn.Embedding):
-    #         # nn.init.uniform_(m.weight, -opt.param_init, opt.param_init)
-    #         nn.init.xavier_uniform_(m.weight)
-
-    # print(list(encoder.parameters())[0])
-    # encoder.apply(weights_init)
-    # print(list(encoder.parameters())[0])
-    # decoder.apply(weights_init)
-
     seq2seq = Seq2seq(encoder, decoder)
 
-    # if opt.param_init > 0.0:
-    #     for p in seq2seq.parameters():
-    #         p.data.uniform_(-opt.param_init, opt.param_init)
-    print(list(seq2seq.parameters())[0])
-    if opt.param_init != 0.0:
-            for p in seq2seq.parameters():
-                p.data.uniform_(-opt.param_init, opt.param_init)
-            #xavier
-            for p in seq2seq.parameters():
-                if p.dim() > 1:
-                    nn.init.xavier_uniform_(p)
-    print(list(seq2seq.parameters())[0])
+    if opt.param_init > 0.0:
+        for p in seq2seq.parameters():
+            p.data.uniform_(-opt.param_init, opt.param_init)
+
+    # xavier initialization
+    if opt.param_init_glorot:
+        for p in seq2seq.parameters():
+            if p.dim() > 1:
+                nn.init.xavier_uniform_(p)
 
     seq2seq.to(device)
 
@@ -245,25 +226,27 @@ def train_pcfg_model():
     src, tgt, train, dev, monitor_data = prepare_iters(opt)
 
     # Prepare model
-    seq2seq, input_vocab, output_vocab = initialize_model(opt, src, tgt, train)
+    seq2seq, _, output_vocab = initialize_model(opt, src, tgt, train)
 
     pad = output_vocab.stoi[tgt.pad_token]
     eos = tgt.eos_id
-    sos = tgt.SYM_EOS
-    unk = tgt.unk_token
+
+    # timestamp for tensorboard run
+    now = datetime.datetime.now()
+    timestamp = now.strftime("%m-%d_%H-%M-%S")
 
     # Prepare training
     losses, loss_weights, metrics = prepare_losses_and_metrics(pad, eos)
-    run_folder = 'runs/' + opt.file_name
+    run_folder = 'runs/' + opt.file_name+'/'+timestamp
     model_folder = 'models/'+opt.file_name
     trainer = SupervisedTrainer(expt_dir=model_folder)
     checkpoint_path = os.path.join(model_folder, opt.load_checkpoint
                                    ) if opt.resume_training else None
 
-    # EarlyStoppingCallback(patience=50, monitor='eval_metrics',
-                                        #    lm_name='Word Accuracy', minimize=False)
+    # EarlyStoppingCallback(patience=50, monitor='eval_metrics',lm_name='Word Accuracy', minimize=False)
     # custom callbacks to log to tensorboard and do early stopping
-    custom_cbs = [TensorboardCallback(run_folder), ReduceLRonPlateauCallback(factor=0.5)]
+    custom_cbs = [TensorboardCallback(
+        run_folder), ReduceLRonPlateauCallback(factor=0.5)]
 
     # Train
     seq2seq, logs = trainer.train(seq2seq, train,
