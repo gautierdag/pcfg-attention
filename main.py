@@ -3,6 +3,7 @@ import argparse
 import logging
 
 import torch
+import torch.nn as nn
 import torchtext
 from collections import OrderedDict
 
@@ -31,7 +32,7 @@ def init_argparser():
 
     # Model arguments
     parser.add_argument('--epochs', type=int,
-                        help='Number of epochs (default, 10)', default=10)
+                        help='Number of epochs (default, 10)', default=100)
     parser.add_argument('--optim', type=str, help='Choose optimizer',
                         choices=['adam', 'adadelta', 'adagrad',
                                  'adamax', 'rmsprop', 'sgd'],
@@ -74,7 +75,7 @@ def init_argparser():
     parser.add_argument('--eval_batch_size', type=int,
                         help='Batch size', default=128)
     parser.add_argument(
-        '--lr', type=float, help='Learning rate, recommended settings.\nrecommended settings: adam=0.001 adadelta=1.0 adamax=0.002 rmsprop=0.01 sgd=0.1', default=1.0)
+        '--lr', type=float, help='Learning rate, recommended settings.\nrecommended settings: adam=0.001 adadelta=1.0 adamax=0.002 rmsprop=0.01 sgd=1.0', default=1.0)
 
     # Data management
     parser.add_argument('--load_checkpoint',
@@ -122,7 +123,7 @@ def prepare_iters(opt):
     def len_filter(example):
         return len(example.src) <= max_len and len(example.tgt) <= max_len
 
-    ds = '100K'
+    ds = '10K'
     if opt.mini:
         ds = '10K'
 
@@ -173,11 +174,41 @@ def initialize_model(opt, src, tgt, train):
                          rnn_cell=opt.rnn_cell,
                          eos_id=tgt.eos_id, sos_id=tgt.sos_id)
 
+
+
+    
+    # def weights_init(m):
+    #     if isinstance(m, nn.LSTM):
+    #         for name, param in m.named_parameters():
+    #             if 'bias' in name:
+    #                 nn.init.constant_(param, 0.0)
+    #             elif 'weight' in name:
+    #                 # nn.init.uniform_(param, -opt.param_init, opt.param_init)
+    #                 nn.init.xavier_uniform_(param)
+
+    #     if isinstance(m, nn.Linear) or isinstance(m, nn.Embedding):
+    #         # nn.init.uniform_(m.weight, -opt.param_init, opt.param_init)
+    #         nn.init.xavier_uniform_(m.weight)
+
+    # print(list(encoder.parameters())[0])
+    # encoder.apply(weights_init)
+    # print(list(encoder.parameters())[0])
+    # decoder.apply(weights_init)
+
     seq2seq = Seq2seq(encoder, decoder)
 
-    if opt.param_init > 0.0:
-        for p in seq2seq.parameters():
-            p.data.uniform_(-opt.param_init, opt.param_init)
+    # if opt.param_init > 0.0:
+    #     for p in seq2seq.parameters():
+    #         p.data.uniform_(-opt.param_init, opt.param_init)
+    print(list(seq2seq.parameters())[0])
+    if opt.param_init != 0.0:
+            for p in seq2seq.parameters():
+                p.data.uniform_(-opt.param_init, opt.param_init)
+            #xavier
+            for p in seq2seq.parameters():
+                if p.dim() > 1:
+                    nn.init.xavier_uniform_(p)
+    print(list(seq2seq.parameters())[0])
 
     seq2seq.to(device)
 
@@ -229,11 +260,10 @@ def train_pcfg_model():
     checkpoint_path = os.path.join(model_folder, opt.load_checkpoint
                                    ) if opt.resume_training else None
 
+    # EarlyStoppingCallback(patience=50, monitor='eval_metrics',
+                                        #    lm_name='Word Accuracy', minimize=False)
     # custom callbacks to log to tensorboard and do early stopping
-    custom_cbs = [TensorboardCallback(
-        run_folder), EarlyStoppingCallback(patience=20, monitor='eval_metrics',
-                                           lm_name='Sequence Accuracy', minimize=False),
-        ReduceLRonPlateauCallback(factor=0.5)]
+    custom_cbs = [TensorboardCallback(run_folder), ReduceLRonPlateauCallback(factor=0.5)]
 
     # Train
     seq2seq, logs = trainer.train(seq2seq, train,
