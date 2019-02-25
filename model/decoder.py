@@ -32,7 +32,7 @@ class DecoderRNN(BaseRNN):
         use_attention(bool, optional): flag indication whether to use attention mechanism or not (default: false)
         attention_method('str', optional): Method used in attention mechanism
             Required with use_attention, str from options {'mlp', 'dot', 'concat'}
-        use_positional_attention(bool, optional): flag indication whether to 
+        use_positional_attention(bool, optional): flag indication whether to
             use positional attention mechanism or not (default: false) (is always used post-rnn)
         full_focus(bool, optional): flag indication whether to use full attention mechanism or not (default: false)
 
@@ -102,7 +102,6 @@ class DecoderRNN(BaseRNN):
         self.max_length = max_len
         self.use_attention = use_attention
         self.use_positional_attention = use_positional_attention
-        self.mix_attention = False
         self.eos_id = eos_id
         self.sos_id = sos_id
 
@@ -129,8 +128,8 @@ class DecoderRNN(BaseRNN):
                     2 * self.hidden_size, hidden_size)
 
         # When both attentions are applied at same level - we mix them
-        if use_attention == 'post-rnn' and use_positional_attention:
-            self.mix_attention = True
+        self.mix_attention = (
+            use_attention == 'post-rnn' and use_positional_attention)
 
     def forward_step(self, input_var, hidden,
                      encoder_outputs, function, **kwargs):
@@ -158,7 +157,7 @@ class DecoderRNN(BaseRNN):
         if self.use_attention == 'pre-rnn':
             h = hidden
             if isinstance(hidden, tuple):
-                h, c = hidden
+                h, _ = hidden
             # Apply the attention method to get the attention vector and weighted context vector.
             # Provide decoder step for hard attention transpose to get batch at the second index
             context, attn = self.attention(
@@ -249,7 +248,8 @@ class DecoderRNN(BaseRNN):
         # We also need to unroll when we don't use teacher forcing. We need perform the decoder steps
         # one-by-one since the output needs to be copied to the input of the
         # next step.
-        if self.use_attention == 'pre-rnn' or not use_teacher_forcing:
+        if self.use_attention == 'pre-rnn' or not use_teacher_forcing \
+                or self.use_positional_attention:
             unrolling = True
         else:
             unrolling = False
@@ -268,7 +268,7 @@ class DecoderRNN(BaseRNN):
 
                 # Perform one forward step
                 decoder_output, decoder_hidden, step_attn, pos_attn = self.forward_step(
-                    decoder_input, decoder_hidden, encoder_outputs, function=function)
+                    decoder_input, decoder_hidden, encoder_outputs, function=function, unroll_step=di)
                 # Remove the unnecessary dimension.
                 step_output = decoder_output.squeeze(1)
                 # Get the actual symbol

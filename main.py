@@ -197,7 +197,7 @@ def initialize_model(opt, src, tgt, train):
 
     seq2seq = Seq2seq(encoder, decoder)
 
-    # xavier initialization
+    # xavier initialization if flag
     if opt.param_init_glorot:
         for p in seq2seq.parameters():
             if p.dim() > 1:
