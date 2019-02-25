@@ -102,6 +102,7 @@ class DecoderRNN(BaseRNN):
         self.max_length = max_len
         self.use_attention = use_attention
         self.use_positional_attention = use_positional_attention
+        self.mix_attention = False
         self.eos_id = eos_id
         self.sos_id = sos_id
 

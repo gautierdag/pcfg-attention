@@ -9,7 +9,7 @@ import torchtext
 from collections import OrderedDict
 
 from machine.trainer import SupervisedTrainer
-from machine.models import EncoderRNN, DecoderRNN, Seq2seq
+from machine.models import EncoderRNN, Seq2seq
 from machine.loss import NLLLoss
 from machine.metrics import WordAccuracy, SequenceAccuracy, FinalTargetAccuracy
 from machine.dataset import SourceField, TargetField
@@ -17,6 +17,8 @@ from machine.util.checkpoint import Checkpoint
 from machine.dataset.get_standard_iter import get_standard_iter
 from utils import generate_filename_from_options, TensorboardCallback, \
     EarlyStoppingCallback, ReduceLRonPlateauCallback
+
+from model import DecoderRNN
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -178,11 +180,25 @@ def initialize_model(opt, src, tgt, train):
                          rnn_cell=opt.rnn_cell,
                          eos_id=tgt.eos_id, sos_id=tgt.sos_id)
 
-    seq2seq = Seq2seq(encoder, decoder)
+    def weights_init(m):
+        if isinstance(m, nn.LSTM):
+            for name, param in m.named_parameters():
+                if 'bias' in name:
+                    nn.init.constant_(param, 0.0)
+                elif 'weight' in name:
+                    nn.init.uniform_(param, -opt.param_init, opt.param_init)
+        if isinstance(m, nn.Linear) or isinstance(m, nn.Embedding):
+            nn.init.uniform_(m.weight, -opt.param_init, opt.param_init)
 
     if opt.param_init > 0.0:
-        for p in seq2seq.parameters():
-            p.data.uniform_(-opt.param_init, opt.param_init)
+        encoder.apply(weights_init)
+        decoder.apply(weights_init)
+
+    seq2seq = Seq2seq(encoder, decoder)
+
+    # if opt.param_init > 0.0:
+    #     for p in seq2seq.parameters():
+    #         p.data.uniform_(-opt.param_init, opt.param_init)
 
     # xavier initialization
     if opt.param_init_glorot:
@@ -243,9 +259,10 @@ def train_pcfg_model():
                                    ) if opt.resume_training else None
 
     # EarlyStoppingCallback(patience=50, monitor='eval_metrics',lm_name='Word Accuracy', minimize=False)
+    # ReduceLRonPlateauCallback(factor=0.5, patience=10)
+
     # custom callbacks to log to tensorboard and do early stopping
-    custom_cbs = [TensorboardCallback(
-        run_folder), ReduceLRonPlateauCallback(factor=0.5)]
+    custom_cbs = [TensorboardCallback(run_folder)]
 
     # Train
     seq2seq, logs = trainer.train(seq2seq, train,
