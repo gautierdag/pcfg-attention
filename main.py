@@ -130,7 +130,7 @@ def prepare_iters(opt):
     def len_filter(example):
         return len(example.src) <= max_len and len(example.tgt) <= max_len
 
-    ds = '10K'
+    ds = '100K'
     if opt.mini:
         ds = '10K'
 
@@ -180,7 +180,8 @@ def initialize_model(opt, src, tgt, train):
                          rnn_cell=opt.rnn_cell,
                          eos_id=tgt.eos_id, sos_id=tgt.sos_id)
 
-    def weights_init(m):
+    # initialize weights using uniform distribution
+    def uniform_weights_init(m):
         if isinstance(m, nn.LSTM):
             for name, param in m.named_parameters():
                 if 'bias' in name:
@@ -191,14 +192,10 @@ def initialize_model(opt, src, tgt, train):
             nn.init.uniform_(m.weight, -opt.param_init, opt.param_init)
 
     if opt.param_init > 0.0:
-        encoder.apply(weights_init)
-        decoder.apply(weights_init)
+        encoder.apply(uniform_weights_init)
+        decoder.apply(uniform_weights_init)
 
     seq2seq = Seq2seq(encoder, decoder)
-
-    # if opt.param_init > 0.0:
-    #     for p in seq2seq.parameters():
-    #         p.data.uniform_(-opt.param_init, opt.param_init)
 
     # xavier initialization
     if opt.param_init_glorot:
@@ -258,8 +255,8 @@ def train_pcfg_model():
     checkpoint_path = os.path.join(model_folder, opt.load_checkpoint
                                    ) if opt.resume_training else None
 
-    # EarlyStoppingCallback(patience=50, monitor='eval_metrics',lm_name='Word Accuracy', minimize=False)
-    # ReduceLRonPlateauCallback(factor=0.5, patience=10)
+    # early_stop = EarlyStoppingCallback(patience=100)
+    # reduce_lr = ReduceLRonPlateauCallback(factor=0.5, patience=100)
 
     # custom callbacks to log to tensorboard and do early stopping
     custom_cbs = [TensorboardCallback(run_folder)]
