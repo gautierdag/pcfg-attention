@@ -72,7 +72,7 @@ def init_argparser():
 
     # Attention arguments
     parser.add_argument(
-        '--attention', choices=['pre-rnn', 'post-rnn'], default='post-rnn')
+        '--attention', choices=['pre-rnn', 'post-rnn', 'none'], default='post-rnn')
     parser.add_argument('--attention_method',
                         choices=['dot', 'mlp', 'concat'], default='dot')
     parser.add_argument('--positional_attention', action='store_true',
@@ -111,6 +111,9 @@ def validate_options(parser, opt):
     if not opt.attention and opt.attention_method:
         parser.error(
             "Attention method provided, but attention is not turned on")
+
+    if opt.attention == 'none':
+        opt.attention = False
 
     if opt.attention and not opt.attention_method:
         logging.info("No Attention method provided. Using DOT method.")

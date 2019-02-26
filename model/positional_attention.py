@@ -72,7 +72,6 @@ class PositionalAttention(nn.Module):
                        ).squeeze()
 
         # need to clamp to direct attention to within sequence
-        # @TODO: Not sure clamping makes sense here
         mu = torch.min(mu, torch.ones(batch_size, device=device))
         self.prev_mu = mu
 

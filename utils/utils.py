@@ -11,11 +11,9 @@ def generate_filename_from_options(opt):
     if opt.optim is not None:
         fs += '_{}'.format(opt.optim)
     if opt.attention:
-        if opt.attention == 'pre-rnn':
-            fs += '_pre'
-        if opt.attention == 'post-rnn':
-            fs += '_post'
         fs += '_att_{}'.format(opt.attention_method)
+    if opt.positional_attention:
+        fs += '_pos_att'
     if opt.bidirectional:
         fs += '_bidirect'
     if opt.mini:
