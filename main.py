@@ -74,9 +74,16 @@ def init_argparser():
     parser.add_argument(
         '--attention', choices=['pre-rnn', 'post-rnn', 'none'], default='post-rnn')
     parser.add_argument('--attention_method',
-                        choices=['dot', 'mlp', 'concat'], default='dot')
+                        choices=['dot', 'mlp', 'concat', 'general'], default='dot')
+
+    # Positional Attention arguments
     parser.add_argument('--positional_attention', action='store_true',
                         help="Use positional attention")
+    parser.add_argument('--positioning_generator_size', type=int,
+                        help='Embedding size of the positional generator (default, 20)', default=20)
+    parser.add_argument(
+        '--attention_mixer', choices=['sum', 'mean', 'mixer'], default='sum',
+        help='Type of mixing used for mixing both types of attention')
 
     # Data arguments
     parser.add_argument('--batch_size', type=int,
@@ -179,9 +186,12 @@ def initialize_model(opt, src, tgt, train):
                          n_layers=opt.n_layers,
                          use_attention=opt.attention,
                          attention_method=opt.attention_method,
+                         use_positional_attention=opt.positional_attention,
                          bidirectional=opt.bidirectional,
                          rnn_cell=opt.rnn_cell,
-                         eos_id=tgt.eos_id, sos_id=tgt.sos_id)
+                         eos_id=tgt.eos_id, sos_id=tgt.sos_id,
+                         positioning_generator_size=opt.positioning_generator_size,
+                         attention_mixer=opt.attention_mixer)
 
     # initialize weights using uniform distribution
     def uniform_weights_init(m):
@@ -258,11 +268,11 @@ def train_pcfg_model():
     checkpoint_path = os.path.join(model_folder, opt.load_checkpoint
                                    ) if opt.resume_training else None
 
-    # early_stop = EarlyStoppingCallback(patience=100)
-    # reduce_lr = ReduceLRonPlateauCallback(factor=0.5, patience=100)
+    early_stop = EarlyStoppingCallback(patience=100)
+    reduce_lr = ReduceLRonPlateauCallback(factor=0.5, patience=50)
 
     # custom callbacks to log to tensorboard and do early stopping
-    custom_cbs = [TensorboardCallback(run_folder)]
+    custom_cbs = [TensorboardCallback(run_folder), early_stop, reduce_lr]
 
     # Train
     seq2seq, logs = trainer.train(seq2seq, train,

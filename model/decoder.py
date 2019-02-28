@@ -6,10 +6,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from machine.models.attention import Attention
 from machine.models.baseRNN import BaseRNN
 
+# Custom implementations of Positional and standard attentions
 from .positional_attention import PositionalAttention
+from .attention import Attention
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -75,7 +76,8 @@ class DecoderRNN(BaseRNN):
                  n_layers=1, rnn_cell='gru', bidirectional=False,
                  input_dropout_p=0, dropout_p=0,
                  use_attention=False, attention_method=None, full_focus=False,
-                 use_positional_attention=False):
+                 use_positional_attention=False, positioning_generator_size=20,
+                 attention_mixer='sum'):
         super(DecoderRNN, self).__init__(vocab_size, max_len, hidden_size,
                                          input_dropout_p, dropout_p,
                                          n_layers, rnn_cell)
@@ -115,7 +117,8 @@ class DecoderRNN(BaseRNN):
 
         if use_positional_attention:
             # @TODO PASS MORE PARAMS HERE
-            self.positional_attention = PositionalAttention(self.hidden_size)
+            self.positional_attention = PositionalAttention(
+                self.hidden_size, positioning_embedding=positioning_generator_size)
         else:
             self.positional_attention = None
 
@@ -130,6 +133,11 @@ class DecoderRNN(BaseRNN):
         # When both attentions are applied at same level - we mix them
         self.mix_attention = (
             use_attention == 'post-rnn' and use_positional_attention)
+        self.attention_mixer = attention_mixer
+        if self.attention_mixer == 'mixer':
+            # initialize alpha to 0.5
+            self.alpha = torch.nn.Parameter(torch.ones(1, device=device)*0.5)
+            self.alpha.requires_grad = True
 
     def forward_step(self, input_var, hidden,
                      encoder_outputs, function, **kwargs):
@@ -179,7 +187,16 @@ class DecoderRNN(BaseRNN):
                 output, encoder_outputs, **kwargs)
 
             # mix by summing
-            context = context+positional_context
+            if self.attention_mixer == 'sum':
+                context = context+positional_context
+            elif self.attention_mixer == 'mean':
+                context = (context+positional_context)*0.5
+            elif self.attention_mixer == 'mixer':
+                context = self.alpha*context + \
+                    (1-self.alpha)*positional_context
+            else:
+                raise ValueError(
+                    'Attention mixer {} not implemented'.format(self.attention_mixer))
 
             output = torch.cat((context, output), dim=2)
 

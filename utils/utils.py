@@ -13,7 +13,9 @@ def generate_filename_from_options(opt):
     if opt.attention:
         fs += '_att_{}'.format(opt.attention_method)
     if opt.positional_attention:
-        fs += '_pos_att'
+        fs += '_pos_att_{}'.format(opt.positioning_generator_size)
+    if opt.attention and opt.positional_attention:
+        fs += '_mix_{}'.format(opt.attention_mixer)
     if opt.bidirectional:
         fs += '_bidirect'
     if opt.mini:
