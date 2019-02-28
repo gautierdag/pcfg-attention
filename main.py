@@ -210,6 +210,10 @@ def initialize_model(opt, src, tgt, train):
 
     seq2seq = Seq2seq(encoder, decoder)
 
+    if torch.cuda.device_count() > 1:
+        logging.info("Using {} GPUs".format(torch.cuda.device_count()))
+        seq2seq = nn.DataParallel(seq2seq)
+
     # xavier initialization if flag
     if opt.param_init_glorot:
         for p in seq2seq.parameters():

@@ -116,7 +116,6 @@ class DecoderRNN(BaseRNN):
             self.attention = None
 
         if use_positional_attention:
-            # @TODO PASS MORE PARAMS HERE
             self.positional_attention = PositionalAttention(
                 self.hidden_size, positioning_embedding=positioning_generator_size)
         else:
