@@ -47,7 +47,7 @@ class PositionalAttention(nn.Module):
         # Need the lengths to normalize each sentence to respective length
         # for the building blocks - 1/N and j/N
         sentence_lengths = mask.transpose(1, 2).argmax(
-            dim=2).flatten().type(torch.FloatTensor)
+            dim=2).flatten().type(torch.float)
         sentence_lengths[sentence_lengths == 0] = enc_seqlen
 
         positioning_weights, _ = self.positioning_generator(
