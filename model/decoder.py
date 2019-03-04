@@ -225,9 +225,6 @@ class DecoderRNN(BaseRNN):
     def forward(self, inputs=None, encoder_hidden=None, encoder_outputs=None,
                 function=F.log_softmax, teacher_forcing_ratio=0):
 
-        total_length = inputs.size(1)
-        print("Total length: ", total_length)
-
         ret_dict = dict()
         if self.use_attention:
             ret_dict[DecoderRNN.KEY_ATTN_SCORE] = list()
@@ -236,8 +233,6 @@ class DecoderRNN(BaseRNN):
 
         inputs, batch_size, max_length = self._validate_args(inputs, encoder_hidden, encoder_outputs,
                                                              function, teacher_forcing_ratio)
-
-        print("Max length: ", max_length)
 
         decoder_hidden = self._init_state(encoder_hidden)
 
@@ -314,10 +309,12 @@ class DecoderRNN(BaseRNN):
 
         ret_dict[DecoderRNN.KEY_SEQUENCE] = sequence_symbols
         ret_dict[DecoderRNN.KEY_LENGTH] = torch.tensor(lengths, device=device)
-        print("Ret Dict: ")
-        print(len(ret_dict[DecoderRNN.KEY_SEQUENCE]))
-        print(len(ret_dict[DecoderRNN.KEY_LENGTH]))
-        print(len(ret_dict[DecoderRNN.KEY_ATTN_SCORE]))
+
+        # Transpose decoder hiddens in order to make parallel GPU work
+        h_n, c_n = decoder_hidden
+        h_n = h_n.transpose(0, 1)
+        c_n = c_n.transpose(0, 1)
+        decoder_hidden = (h_n, c_n)
 
         return decoder_outputs, decoder_hidden, ret_dict
 
