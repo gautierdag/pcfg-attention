@@ -315,8 +315,8 @@ class DecoderRNN(BaseRNN):
         ret_dict[DecoderRNN.KEY_SEQUENCE] = sequence_symbols
         ret_dict[DecoderRNN.KEY_LENGTH] = torch.tensor(lengths, device=device)
         print("Ret Dict: ")
-        print(ret_dict[DecoderRNN.KEY_SEQUENCE].shape)
-        print(ret_dict[DecoderRNN.KEY_LENGTH].shape)
+        print(len(ret_dict[DecoderRNN.KEY_SEQUENCE]))
+        print(len(ret_dict[DecoderRNN.KEY_LENGTH]))
         print(len(ret_dict[DecoderRNN.KEY_ATTN_SCORE]))
 
         return decoder_outputs, decoder_hidden, ret_dict
